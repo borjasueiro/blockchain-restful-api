@@ -1,0 +1,446 @@
+package chaincode
+
+import (
+	"encoding/json"
+	"fmt"
+
+	"github.com/hyperledger/fabric-contract-api-go/contractapi"
+)
+
+// SmartContract provides functions for managing an Farm
+type SmartContract struct {
+	contractapi.Contract
+}
+
+// Farm describes basic details of what makes up a simple farm asset
+type Farm struct {
+	ID          string `json:"id"`
+	Location    string `json:"location"`
+	Date        string `json:"date"`
+	TransportID string `json:"transport_id"`
+	Temperature string `json:"temperature"`
+}
+
+// Transport describes basic details of what makes up a simple transport asset
+type Transport struct {
+	TransportID string `json:"transport_id"`
+	SiloID      string `json:"silo_id"`
+	Date        string `json:"date"`
+}
+
+// Trace describes basic details of what makes up a simple Trace asset
+type Trace struct {
+	ID            string `json:"id"`
+	ListFarms     []Farm `json:"farms"`
+	ListTransvase []struct {
+		SrcSiloID string `json:"src_silo_id"`
+		DstSiloID string `json:"dst_silo_id"`
+		Date      string `json:"date"`
+	} `json:"transvase"`
+}
+
+// InitLedger adds a base set of assets to the ledger
+func (s *SmartContract) InitLedger(ctx contractapi.TransactionContextInterface) error {
+	assets := []Farm{
+		{ID: "Asoc", Location: "Mazaricos", Date: "20/07/2022", TransportID: "0000XXX", Temperature: "38ºC"},
+		{ID: "Coop", Location: "Bueu", Date: "20/07/2022", TransportID: "0000XXX", Temperature: "38ºC"},
+		{ID: "Agra", Location: "Porto", Date: "20/07/2022", TransportID: "0000XXX", Temperature: "38ºC"},
+	}
+
+	for _, asset := range assets {
+		assetJSON, err := json.Marshal(asset)
+		if err != nil {
+			return err
+		}
+
+		err = ctx.GetStub().PutState(asset.ID, assetJSON)
+		if err != nil {
+			return fmt.Errorf("failed to put to world state. %v", err)
+		}
+	}
+
+	return nil
+}
+
+// CreateFarm issues a new asset to the world state with given details.
+func (s *SmartContract) CreateFarm(ctx contractapi.TransactionContextInterface, id string, location string, date string, transportId string, temperature string) error {
+	exists, err := s.FarmExists(ctx, id)
+	if err != nil {
+		return err
+	}
+	if exists {
+		return fmt.Errorf("the asset %s already exists", id)
+	}
+
+	asset := Farm{
+		ID:          id,
+		Location:    location,
+		Date:        date,
+		TransportID: transportId,
+		Temperature: temperature,
+	}
+	assetJSON, err := json.Marshal(asset)
+	if err != nil {
+		return err
+	}
+
+	return ctx.GetStub().PutState(id, assetJSON)
+}
+
+// ReadFarm returns the asset stored in the world state with given id.
+func (s *SmartContract) ReadFarm(ctx contractapi.TransactionContextInterface, id string) (*Farm, error) {
+	assetJSON, err := ctx.GetStub().GetState(id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read from world state: %v", err)
+	}
+	if assetJSON == nil {
+		return nil, fmt.Errorf("the asset %s does not exist", id)
+	}
+
+	var asset Farm
+	err = json.Unmarshal(assetJSON, &asset)
+	if err != nil {
+		return nil, err
+	}
+
+	return &asset, nil
+}
+
+// UpdateFarm updates an existing asset in the world state with provided parameters.
+func (s *SmartContract) UpdateFarm(ctx contractapi.TransactionContextInterface, id string, location string, date string, transportId string, temperature string) error {
+	exists, err := s.FarmExists(ctx, id)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return fmt.Errorf("the asset %s does not exist", id)
+	}
+
+	// overwriting original asset with new asset
+	asset := Farm{
+		ID:          id,
+		Location:    location,
+		Date:        date,
+		TransportID: transportId,
+		Temperature: temperature,
+	}
+	assetJSON, err := json.Marshal(asset)
+	if err != nil {
+		return err
+	}
+
+	return ctx.GetStub().PutState(id, assetJSON)
+}
+
+// DeleteFarm deletes an given asset from the world state.
+func (s *SmartContract) DeleteFarm(ctx contractapi.TransactionContextInterface, id string) error {
+	exists, err := s.FarmExists(ctx, id)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return fmt.Errorf("the asset %s does not exist", id)
+	}
+
+	return ctx.GetStub().DelState(id)
+}
+
+// FarmExists returns true when asset with given ID exists in world state
+func (s *SmartContract) FarmExists(ctx contractapi.TransactionContextInterface, id string) (bool, error) {
+	assetJSON, err := ctx.GetStub().GetState(id)
+	if err != nil {
+		return false, fmt.Errorf("failed to read from world state: %v", err)
+	}
+
+	return assetJSON != nil, nil
+}
+
+// GetAllFarms returns all assets found in world state
+func (s *SmartContract) GetAllFarms(ctx contractapi.TransactionContextInterface) ([]*Farm, error) {
+	// range query with empty string for startKey and endKey does an
+	// open-ended query of all assets in the chaincode namespace.
+	resultsIterator, err := ctx.GetStub().GetStateByRange("", "")
+	if err != nil {
+		return nil, err
+	}
+	defer resultsIterator.Close()
+
+	var assets []*Farm
+	for resultsIterator.HasNext() {
+		queryResponse, err := resultsIterator.Next()
+		if err != nil {
+			return nil, err
+		}
+
+		var asset Farm
+		err = json.Unmarshal(queryResponse.Value, &asset)
+		if err != nil {
+			return nil, err
+		}
+		assets = append(assets, &asset)
+	}
+
+	return assets, nil
+}
+
+// Transport
+// CreateTransport issues a new asset to the world state with given details.
+func (s *SmartContract) CreateTransport(ctx contractapi.TransactionContextInterface, id string, silo_dst string, date string) error {
+	exists, err := s.TransportExists(ctx, id)
+	if err != nil {
+		return err
+	}
+	if exists {
+		return fmt.Errorf("the asset %s already exists", id)
+	}
+
+	asset := Transport{
+		TransportID: id,
+		SiloID:      silo_dst,
+		Date:        date,
+	}
+	assetJSON, err := json.Marshal(asset)
+	if err != nil {
+		return err
+	}
+
+	return ctx.GetStub().PutState(id, assetJSON)
+}
+
+// ReadTransport returns the asset stored in the world state with given id.
+func (s *SmartContract) ReadTransport(ctx contractapi.TransactionContextInterface, id string) (*Transport, error) {
+	assetJSON, err := ctx.GetStub().GetState(id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read from world state: %v", err)
+	}
+	if assetJSON == nil {
+		return nil, fmt.Errorf("the asset %s does not exist", id)
+	}
+
+	var asset Transport
+	err = json.Unmarshal(assetJSON, &asset)
+	if err != nil {
+		return nil, err
+	}
+
+	return &asset, nil
+}
+
+// UpdateTransport updates an existing asset in the world state with provided parameters.
+func (s *SmartContract) UpdateTransport(ctx contractapi.TransactionContextInterface, id string, silo_dst string, date string) error {
+	exists, err := s.TransportExists(ctx, id)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return fmt.Errorf("the asset %s does not exist", id)
+	}
+
+	// overwriting original asset with new asset
+	asset := Transport{
+		TransportID: id,
+		SiloID:      silo_dst,
+		Date:        date,
+	}
+	assetJSON, err := json.Marshal(asset)
+	if err != nil {
+		return err
+	}
+
+	return ctx.GetStub().PutState(id, assetJSON)
+}
+
+// DeleteTransport deletes an given asset from the world state.
+func (s *SmartContract) DeleteTransport(ctx contractapi.TransactionContextInterface, id string) error {
+	exists, err := s.TransportExists(ctx, id)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return fmt.Errorf("the asset %s does not exist", id)
+	}
+
+	return ctx.GetStub().DelState(id)
+}
+
+// TransportExists returns true when asset with given ID exists in world state
+func (s *SmartContract) TransportExists(ctx contractapi.TransactionContextInterface, id string) (bool, error) {
+	assetJSON, err := ctx.GetStub().GetState(id)
+	if err != nil {
+		return false, fmt.Errorf("failed to read from world state: %v", err)
+	}
+
+	return assetJSON != nil, nil
+}
+
+// GetAllTransports returns all assets found in world state
+func (s *SmartContract) GetAllTransports(ctx contractapi.TransactionContextInterface) ([]*Transport, error) {
+	// range query with empty string for startKey and endKey does an
+	// open-ended query of all assets in the chaincode namespace.
+	resultsIterator, err := ctx.GetStub().GetStateByRange("", "")
+	if err != nil {
+		return nil, err
+	}
+	defer resultsIterator.Close()
+
+	var assets []*Transport
+	for resultsIterator.HasNext() {
+		queryResponse, err := resultsIterator.Next()
+		if err != nil {
+			return nil, err
+		}
+
+		var asset Transport
+		err = json.Unmarshal(queryResponse.Value, &asset)
+		if err != nil {
+			return nil, err
+		}
+		assets = append(assets, &asset)
+	}
+
+	return assets, nil
+}
+
+// Traces
+// CreateTrace issues a new asset to the world state with given details.
+func (s *SmartContract) CreateTrace(ctx contractapi.TransactionContextInterface, id string, listFarms []Farm) error {
+	exists, err := s.TraceExists(ctx, id)
+	if err != nil {
+		return err
+	}
+	if exists {
+		return fmt.Errorf("the asset %s already exists", id)
+	}
+
+	asset := Trace{
+		ID:        id,
+		ListFarms: listFarms,
+		ListTransvase: []struct {
+			SrcSiloID string `json:"src_silo_id"`
+			DstSiloID string `json:"dst_silo_id"`
+			Date      string `json:"date"`
+		}{},
+	}
+	assetJSON, err := json.Marshal(asset)
+	if err != nil {
+		return err
+	}
+
+	return ctx.GetStub().PutState(id, assetJSON)
+}
+
+// ReadTrace returns the asset stored in the world state with given id.
+func (s *SmartContract) ReadTrace(ctx contractapi.TransactionContextInterface, id string) (*Trace, error) {
+	assetJSON, err := ctx.GetStub().GetState(id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read from world state: %v", err)
+	}
+	if assetJSON == nil {
+		return nil, fmt.Errorf("the asset %s does not exist", id)
+	}
+
+	var asset Trace
+	err = json.Unmarshal(assetJSON, &asset)
+	if err != nil {
+		return nil, err
+	}
+
+	return &asset, nil
+}
+
+// AddFarmToTrace updates an existing asset in the world state with a new farm.
+func (s *SmartContract) AddFarmToTrace(ctx contractapi.TransactionContextInterface, id string, farm Farm) error {
+	assetJSON, err := ctx.GetStub().GetState(id)
+	var asset Trace
+	if err != nil {
+		return err
+	}
+	err = json.Unmarshal(assetJSON, &asset)
+	if err != nil {
+		return err
+	}
+	asset.ListFarms = append(asset.ListFarms, farm)
+	// overwriting original asset with new asset
+	assetJSON, err = json.Marshal(asset)
+	if err != nil {
+		return err
+	}
+
+	return ctx.GetStub().PutState(id, assetJSON)
+}
+
+// AddFarmToTrace updates an existing asset in the world state with a new farm.
+func (s *SmartContract) AddTransvaseToTrace(ctx contractapi.TransactionContextInterface, id string, siloSrc string, siloDst string, date string) error {
+	assetJSON, err := ctx.GetStub().GetState(id)
+	var asset Trace
+	if err != nil {
+		return err
+	}
+	err = json.Unmarshal(assetJSON, &asset)
+	if err != nil {
+		return err
+	}
+	asset.ListTransvase = append(asset.ListTransvase, struct {
+		SrcSiloID string `json:"src_silo_id"`
+		DstSiloID string `json:"dst_silo_id"`
+		Date      string `json:"date"`
+	}{siloSrc, siloDst, date})
+	// overwriting original asset with new asset
+	assetJSON, err = json.Marshal(asset)
+	if err != nil {
+		return err
+	}
+
+	return ctx.GetStub().PutState(id, assetJSON)
+}
+
+// DeleteTrace deletes an given asset from the world state.
+func (s *SmartContract) DeleteTrace(ctx contractapi.TransactionContextInterface, id string) error {
+	exists, err := s.TraceExists(ctx, id)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return fmt.Errorf("the asset %s does not exist", id)
+	}
+
+	return ctx.GetStub().DelState(id)
+}
+
+// TraceExists returns true when asset with given ID exists in world state
+func (s *SmartContract) TraceExists(ctx contractapi.TransactionContextInterface, id string) (bool, error) {
+	assetJSON, err := ctx.GetStub().GetState(id)
+	if err != nil {
+		return false, fmt.Errorf("failed to read from world state: %v", err)
+	}
+
+	return assetJSON != nil, nil
+}
+
+// GetAllTraces returns all assets found in world state
+func (s *SmartContract) GetAllTraces(ctx contractapi.TransactionContextInterface) ([]*Trace, error) {
+	// range query with empty string for startKey and endKey does an
+	// open-ended query of all assets in the chaincode namespace.
+	resultsIterator, err := ctx.GetStub().GetStateByRange("", "")
+	if err != nil {
+		return nil, err
+	}
+	defer resultsIterator.Close()
+
+	var assets []*Trace
+	for resultsIterator.HasNext() {
+		queryResponse, err := resultsIterator.Next()
+		if err != nil {
+			return nil, err
+		}
+
+		var asset Trace
+		err = json.Unmarshal(queryResponse.Value, &asset)
+		if err != nil {
+			return nil, err
+		}
+		assets = append(assets, &asset)
+	}
+
+	return assets, nil
+}
