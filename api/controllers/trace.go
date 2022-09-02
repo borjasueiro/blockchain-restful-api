@@ -39,12 +39,12 @@ func (ctrl *TraceController) GetTraceById(c *gin.Context) {
 }
 
 func (ctrl *TraceController) AddNewTrace(c *gin.Context) {
-	var newTrace models.Trace
-	if err := c.BindJSON(&newTrace); err != nil {
+	var newFarm models.FarmRecollection
+	if err := c.BindJSON(&newFarm); err != nil {
 		return // TODO return Error message.
 	}
-
-	if err := ctrl.traceRepository.AddNewTrace(newTrace); err != nil {
+	id, err := ctrl.traceRepository.AddNewTrace(newFarm)
+	if err != nil {
 		if _, ok := err.(*blockchain.AssetAlreadyExistsError); ok {
 			c.IndentedJSON(http.StatusConflict, gin.H{"message": fmt.Sprint(err)})
 		} else {
@@ -52,16 +52,35 @@ func (ctrl *TraceController) AddNewTrace(c *gin.Context) {
 		}
 	} else {
 		c.Status(http.StatusCreated)
-		c.Header("Location", common.TraceRoute+"/"+url.PathEscape(newTrace.ID))
+		c.Header("Location", common.TraceRoute+"/"+url.PathEscape(id))
 	}
 }
 
-func (ctrl *TraceController) UpdateTrace(c *gin.Context) {
-	var updatedTrace models.Trace
-	if err := c.BindJSON(&updatedTrace); err != nil {
+func (ctrl *TraceController) AddFarmToTrace(c *gin.Context) {
+	var farm models.FarmRecollection
+	id := c.Param("id")
+	if err := c.BindJSON(&farm); err != nil {
 		return
 	}
-	if err := ctrl.traceRepository.UpdateTrace(updatedTrace); err != nil {
+	if err := ctrl.traceRepository.AddFarmToTrace(id, farm); err != nil {
+		if _, ok := err.(*blockchain.AssetNotFoundError); ok {
+			c.IndentedJSON(http.StatusNotFound, gin.H{"message": fmt.Sprint(err)})
+		} else {
+			c.Status(http.StatusInternalServerError)
+		}
+	} else {
+		c.Status(http.StatusNoContent)
+	}
+
+}
+
+func (ctrl *TraceController) AddTransvaseToTrace(c *gin.Context) {
+	var transvase models.Transvase
+	id := c.Param("id")
+	if err := c.BindJSON(&transvase); err != nil {
+		return
+	}
+	if err := ctrl.traceRepository.AddTransvaseToTrace(id, transvase); err != nil {
 		if _, ok := err.(*blockchain.AssetNotFoundError); ok {
 			c.IndentedJSON(http.StatusNotFound, gin.H{"message": fmt.Sprint(err)})
 		} else {

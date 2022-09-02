@@ -20,11 +20,6 @@ func NewTransportController(transportRepository *repo.TransportRepository) *Tran
 	return &TransportController{transportRepository}
 }
 
-func (ctrl *TransportController) GetTransports(c *gin.Context) {
-	transports := ctrl.transportRepository.GetTransports()
-	c.IndentedJSON(http.StatusOK, transports)
-}
-
 func (ctrl *TransportController) GetTransportById(c *gin.Context) {
 	id := c.Param("id")
 	if transport, err := ctrl.transportRepository.GetTransportById(id); err != nil {
@@ -52,16 +47,17 @@ func (ctrl *TransportController) AddNewTransport(c *gin.Context) {
 		}
 	} else {
 		c.Status(http.StatusCreated)
-		c.Header("Location", common.TransportRoute+"/"+url.PathEscape(newTransport.ID))
+		c.Header("Location", common.TransportRoute+"/"+url.PathEscape(newTransport.TransportID))
 	}
 }
 
-func (ctrl *TransportController) UpdateTransport(c *gin.Context) {
-	var updatedTransport models.Transport
-	if err := c.BindJSON(&updatedTransport); err != nil {
+func (ctrl *TransportController) AddFarmRecollectionToTransport(c *gin.Context) {
+	transportId := c.Param("id")
+	var farmRecollection models.FarmRecollection
+	if err := c.BindJSON(&farmRecollection); err != nil {
 		return
 	}
-	if err := ctrl.transportRepository.UpdateTransport(updatedTransport); err != nil {
+	if err := ctrl.transportRepository.AddFarmRecollectionToTransport(transportId, farmRecollection); err != nil {
 		if _, ok := err.(*blockchain.AssetNotFoundError); ok {
 			c.IndentedJSON(http.StatusNotFound, gin.H{"message": fmt.Sprint(err)})
 		} else {
@@ -70,5 +66,18 @@ func (ctrl *TransportController) UpdateTransport(c *gin.Context) {
 	} else {
 		c.Status(http.StatusNoContent)
 	}
+}
 
+func (ctrl *TransportController) PopFarmRecollectionToTransport(c *gin.Context) {
+	transportId := c.Param("id")
+	farmName := c.PostForm("name")
+	if farm, err := ctrl.transportRepository.PopFarmRecollectionToTransport(transportId, farmName); err != nil {
+		if _, ok := err.(*blockchain.AssetNotFoundError); ok {
+			c.IndentedJSON(http.StatusNotFound, gin.H{"message": fmt.Sprint(err)})
+		} else {
+			c.Status(http.StatusInternalServerError)
+		}
+	} else {
+		c.IndentedJSON(http.StatusOK, farm)
+	}
 }
