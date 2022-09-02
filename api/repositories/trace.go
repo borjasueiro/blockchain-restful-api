@@ -21,10 +21,13 @@ func (repo *TraceRepository) GetTraceById(id string) (models.Trace, error) {
 	return repo.blockchain.GetTraceById(id)
 }
 
-func (repo *TraceRepository) AddNewTrace(newTrace models.Trace) error {
-	return repo.blockchain.AddNewTrace(newTrace)
+func (repo *TraceRepository) AddNewTrace(farm models.FarmRecollection) (string, error) {
+	return repo.blockchain.AddNewTrace(farm)
 }
 
-func (repo *TraceRepository) UpdateTrace(newTraceDefinition models.Trace) error {
-	return repo.blockchain.UpdateTrace(newTraceDefinition)
+func (repo *TraceRepository) AddFarmToTrace(id string, farm models.FarmRecollection) error {
+	return repo.blockchain.AddFarmToTrace(id, farm)
+}
+func (repo *TraceRepository) AddTransvaseToTrace(id string, transvase models.Transvase) error {
+	return repo.blockchain.AddTransvaseToTrace(id, transvase)
 }
