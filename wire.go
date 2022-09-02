@@ -19,10 +19,8 @@ func InitializeApp() *api.RestfulApplication {
 	panic(
 		wire.Build(
 			InitializeBlockchain,
-			repo.NewFarmRepository,
 			repo.NewTransportRepository,
 			repo.NewTraceRepository,
-			controllers.NewFarmController,
 			controllers.NewTransportController,
 			controllers.NewTraceController,
 			api.NewApp,

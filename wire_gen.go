@@ -16,13 +16,11 @@ import (
 
 func InitializeApp() *api.RestfulApplication {
 	blockchain := InitializeBlockchain()
-	farmRepository := api2.NewFarmRepository(blockchain)
-	farmController := controllers.NewFarmController(farmRepository)
 	transportRepository := api2.NewTransportRepository(blockchain)
 	transportController := controllers.NewTransportController(transportRepository)
 	traceRepository := api2.NewTraceRepository(blockchain)
 	traceController := controllers.NewTraceController(traceRepository)
-	restfulApplication := api.NewApp(farmController, transportController, traceController)
+	restfulApplication := api.NewApp(transportController, traceController)
 	return restfulApplication
 }
 
