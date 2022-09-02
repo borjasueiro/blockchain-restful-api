@@ -1,7 +1,7 @@
 package models
 
-type Farm struct {
-	ID          string `json:"id"`
+type FarmRecollection struct {
+	Name        string `json:"name"`
 	Location    string `json:"location"`
 	Date        string `json:"date"`
 	TransportID string `json:"transport_id"`
@@ -9,9 +9,8 @@ type Farm struct {
 }
 
 type Transport struct {
-	TransportID string `json:"transport_id"`
-	SiloID      string `json:"silo_id"`
-	Date        string `json:"date"`
+	TransportID           string             `json:"transport_id"`
+	ListFarmRecollections []FarmRecollection `json:"farms"`
 }
 
 type Transvase struct {
@@ -21,7 +20,7 @@ type Transvase struct {
 }
 
 type Trace struct {
-	ID            string      `json:"id"`
-	ListTransport []Farm      `json:"farms"`
-	ListTransvase []Transvase `json:"transvase"`
+	ID            string             `json:"id"`
+	ListFarms     []FarmRecollection `json:"farms"`
+	ListTransvase []Transvase        `json:"transvase"`
 }

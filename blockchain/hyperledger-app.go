@@ -63,12 +63,6 @@ func NewHyperledgerApp() *HyperledgerApp {
 	}
 	log.Println(string(result))
 
-	// log.Println("--> Evaluate Transaction: GetAllAssets, function returns all the current assets on the ledger")
-	// result, err = contract.EvaluateTransaction("GetAllAssets")
-	// if err != nil {
-	// 	log.Fatalf("Failed to evaluate transaction: %v", err)
-	// }
-	// log.Println(string(result))
 	return &HyperledgerApp{contract}
 }
 
@@ -113,64 +107,6 @@ func populateWallet(wallet *gateway.Wallet) error {
 	return wallet.Put("appUser", identity)
 }
 
-func (app *HyperledgerApp) GetFarms() []models.Farm {
-	result, err := app.contract.EvaluateTransaction("GetAllFarms")
-	if err != nil {
-		log.Fatalf("Failed to evaluate transaction: %v", err)
-	}
-	var farms []models.Farm
-	if err = json.Unmarshal(result, &farms); err != nil {
-		log.Fatalf("Failed to evaluate transaction: %v", err)
-	}
-	return farms
-}
-
-func (app *HyperledgerApp) GetFarmById(id string) (models.Farm, error) {
-	result, err := app.contract.EvaluateTransaction("ReadFarm", id)
-	if err != nil {
-		log.Fatalf("Failed to evaluate transaction: %v\n", err)
-		return models.Farm{}, err
-	}
-	var farm models.Farm
-	if err = json.Unmarshal(result, &farm); err != nil {
-		log.Fatalf("Failed to evaluate transaction: %v\n", err)
-		return models.Farm{}, err
-	}
-	return farm, nil
-}
-
-func (app *HyperledgerApp) AddNewFarm(farm models.Farm) error {
-	_, err := app.contract.SubmitTransaction("CreateFarm", farm.ID, farm.Location)
-	if err != nil {
-		log.Fatalf("Failed to evaluate transaction: %v\n", err)
-		return err
-	}
-	return nil
-}
-
-func (app *HyperledgerApp) UpdateFarm(farm models.Farm) error {
-	_, err := app.contract.SubmitTransaction("UpdateFarm", farm.ID, farm.Location)
-	if err != nil {
-		log.Fatalf("Failed to evaluate transaction: %v\n", err)
-		return err
-	}
-
-	return nil
-}
-
-// Transport
-func (app *HyperledgerApp) GetTransports() []models.Transport {
-	result, err := app.contract.EvaluateTransaction("GetAllTransports")
-	if err != nil {
-		log.Fatalf("Failed to evaluate transaction: %v", err)
-	}
-	var transports []models.Transport
-	if err = json.Unmarshal(result, &transports); err != nil {
-		log.Fatalf("Failed to evaluate transaction: %v", err)
-	}
-	return transports
-}
-
 func (app *HyperledgerApp) GetTransportById(id string) (models.Transport, error) {
 	result, err := app.contract.EvaluateTransaction("ReadTransport", id)
 	if err != nil {
@@ -186,7 +122,7 @@ func (app *HyperledgerApp) GetTransportById(id string) (models.Transport, error)
 }
 
 func (app *HyperledgerApp) AddNewTransport(transport models.Transport) error {
-	_, err := app.contract.SubmitTransaction("CreateTransport", transport.TransportID, transport.SiloID, transport.Date)
+	_, err := app.contract.SubmitTransaction("CreateTransport", transport.TransportID)
 	if err != nil {
 		log.Fatalf("Failed to evaluate transaction: %v\n", err)
 		return err
@@ -194,14 +130,30 @@ func (app *HyperledgerApp) AddNewTransport(transport models.Transport) error {
 	return nil
 }
 
-func (app *HyperledgerApp) UpdateTransport(transport models.Transport) error {
-	_, err := app.contract.SubmitTransaction("UpdateTransport", transport.TransportID, transport.SiloID, transport.Date)
+func (app *HyperledgerApp) AddFarmRecollectionToTransport(transportId string, farm models.FarmRecollection) error {
+	_, err := app.contract.SubmitTransaction("AddFarmRecollectionToTransport", transportId, farm.Name, farm.Location, farm.Date, farm.Temperature)
 	if err != nil {
 		log.Fatalf("Failed to evaluate transaction: %v\n", err)
 		return err
 	}
 
 	return nil
+}
+
+func (app *HyperledgerApp) PopFarmRecollectionToTransport(transportId, name string) (models.FarmRecollection, error) {
+	result, err := app.contract.SubmitTransaction("PopFarmRecollectionFromTransport", transportId, name)
+	if err != nil {
+		log.Fatalf("Failed to evaluate transaction: %v\n", err)
+		return models.FarmRecollection{}, err
+
+	}
+	var farmRecollection models.FarmRecollection
+	if err = json.Unmarshal(result, &farmRecollection); err != nil {
+		log.Fatalf("Failed to evaluate transaction: %v\n", err)
+		return models.FarmRecollection{}, err
+	}
+
+	return farmRecollection, nil
 }
 
 // Traces
@@ -231,17 +183,17 @@ func (app *HyperledgerApp) GetTraceById(id string) (models.Trace, error) {
 	return trace, nil
 }
 
-func (app *HyperledgerApp) AddNewTrace(id string, farm models.Farm) error {
-	_, err := app.contract.SubmitTransaction("CreateTrace", id, farm.ID, farm.Location, farm.Date, farm.TransportId, farm.Temperature)
+func (app *HyperledgerApp) AddNewTrace(farm models.FarmRecollection) (string, error) {
+	id, err := app.contract.SubmitTransaction("CreateTrace", farm.Name, farm.Location, farm.Date, farm.TransportID, farm.Temperature)
 	if err != nil {
 		log.Fatalf("Failed to evaluate transaction: %v\n", err)
-		return err
+		return "", err
 	}
-	return nil
+	return string(id), nil
 }
 
-func (app *HyperledgerApp) AddFarmToTrace(id string, farm models.Farm) error {
-	_, err := app.contract.SubmitTransaction("AddFarmToTrace", id, farm.ID, farm.Location, farm.Date, farm.TransportId, farm.Temperature)
+func (app *HyperledgerApp) AddFarmToTrace(id string, farm models.FarmRecollection) error {
+	_, err := app.contract.SubmitTransaction("AddFarmToTrace", id, farm.Name, farm.Location, farm.Date, farm.TransportID, farm.Temperature)
 	if err != nil {
 		log.Fatalf("Failed to evaluate transaction: %v\n", err)
 		return err

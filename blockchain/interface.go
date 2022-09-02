@@ -1,21 +1,19 @@
 package blockchain
 
-import "github.com/borja.sueiro/blockchain-restful-api/models"
+import (
+	"github.com/borja.sueiro/blockchain-restful-api/models"
+)
 
 type Blockchain interface {
-	// Farm
-	GetFarms() []models.Farm
-	GetFarmById(string) (models.Farm, error)
-	AddNewFarm(models.Farm) error
-	UpdateFarm(models.Farm) error
 	// Transport
-	GetTransports() []models.Transport
 	GetTransportById(string) (models.Transport, error)
 	AddNewTransport(models.Transport) error
-	UpdateTransport(models.Transport) error
+	AddFarmRecollectionToTransport(string, models.FarmRecollection) error
+	PopFarmRecollectionToTransport(string, string) (models.FarmRecollection, error)
 	//Trace
 	GetTraces() []models.Trace
 	GetTraceById(string) (models.Trace, error)
-	AddNewTrace(models.Trace) error
-	UpdateTrace(models.Trace) error
+	AddNewTrace(models.FarmRecollection) (string, error)
+	AddFarmToTrace(string, models.FarmRecollection) error
+	AddTransvaseToTrace(string, models.Transvase) error
 }
