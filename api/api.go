@@ -7,42 +7,37 @@ import (
 )
 
 type RestfulApplication struct {
-	router         *gin.Engine
-	farmController *controllers.FarmController
-	transportCtrl  *controllers.TransportController
-	traceCtrl      *controllers.TraceController
+	router        *gin.Engine
+	transportCtrl *controllers.TransportController
+	traceCtrl     *controllers.TraceController
 }
 
 func (app *RestfulApplication) Run(addr string) {
 	app.router.Run(addr)
 }
 
-func setUpRoutes(router *gin.Engine, farmController *controllers.FarmController,
+func setUpRoutes(router *gin.Engine,
 	transportController *controllers.TransportController,
 	traceController *controllers.TraceController) {
-	// Farm
-	router.GET(common.FarmRoute, farmController.GetFarms)
-	router.GET(common.FarmRoute+"/:id", farmController.GetFarmById)
-	router.POST(common.FarmRoute, farmController.AddNewFarm)
-	router.PUT(common.FarmRoute+"/:id", farmController.UpdateFarm)
+
 	// Transport
-	router.GET(common.TransportRoute, transportController.GetTransports)
 	router.GET(common.TransportRoute+"/:id", transportController.GetTransportById)
 	router.POST(common.TransportRoute, transportController.AddNewTransport)
-	router.PUT(common.TransportRoute+"/:id", transportController.UpdateTransport)
+	router.POST(common.TransportRoute+"/:id/addfarm", transportController.AddFarmRecollectionToTransport)
+	router.POST(common.TransportRoute+"/:id/popfarm", transportController.PopFarmRecollectionToTransport)
 	// Trace
 	router.GET(common.TraceRoute, traceController.GetTraces)
 	router.GET(common.TraceRoute+"/:id", traceController.GetTraceById)
 	router.POST(common.TraceRoute, traceController.AddNewTrace)
-	router.PUT(common.TraceRoute+"/:id", traceController.UpdateTrace)
+	router.POST(common.TraceRoute+"/:id/farm", traceController.AddFarmToTrace)
+	router.POST(common.TraceRoute+"/:id/transvase", traceController.AddTransvaseToTrace)
 }
 
-func NewApp(farmCtrl *controllers.FarmController,
-	transportCtrl *controllers.TransportController,
+func NewApp(transportCtrl *controllers.TransportController,
 	traceCtrl *controllers.TraceController) *RestfulApplication {
 	router := gin.Default()
 
-	setUpRoutes(router, farmCtrl, transportCtrl, traceCtrl)
+	setUpRoutes(router, transportCtrl, traceCtrl)
 
-	return &RestfulApplication{router, farmCtrl, transportCtrl, traceCtrl}
+	return &RestfulApplication{router, transportCtrl, traceCtrl}
 }
