@@ -30,7 +30,17 @@ This project is an API to make request against a blockchain using a smart contra
 * TraceRoutAddTransvaseToTrace: POST petition to add a transvase in a trace.
 
 ## Getting started
+First of all, need to set up a blockchain. If you want to use test-network of hyperledger tou can execute:
+```
+./network.sh up createChannel -c mychannel -ca
+./network.sh deployCC -ccn basic -ccp ../asset-transfer-basic/chaincode-go/ -ccl go
+```
+After this set up the server:
 
+```
+$ ~/go/bin/wire
+$ ./blockchain-restful-api
+```
 Below we describe the conventions or tools specific to golang project.
 
 ### Layout
