@@ -173,7 +173,7 @@ func (app *HyperledgerApp) GetTraceById(id string) (models.Trace, error) {
 	result, err := app.contract.EvaluateTransaction("ReadTrace", id)
 	if err != nil {
 		log.Fatalf("Failed to evaluate transaction: %v\n", err)
-		return models.Trace{}, err
+		return models.Trace{}, &AssetNotFoundError{}
 	}
 	var trace models.Trace
 	if err = json.Unmarshal(result, &trace); err != nil {
@@ -202,7 +202,7 @@ func (app *HyperledgerApp) AddFarmToTrace(id string, farm models.FarmRecollectio
 }
 
 func (app *HyperledgerApp) AddTransvaseToTrace(id string, transvase models.Transvase) error {
-	_, err := app.contract.SubmitTransaction("AddTransvaseToTrace", id, transvase.SrcSiloID, transvase.DstSiloID, transvase.Date)
+	_, err := app.contract.SubmitTransaction("AddTransvaseToTrace", id, transvase.SrcSiloID, transvase.DstSiloID, transvase.Temperature, transvase.Date)
 	if err != nil {
 		log.Fatalf("Failed to evaluate transaction: %v\n", err)
 		return err

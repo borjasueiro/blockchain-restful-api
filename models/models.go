@@ -14,9 +14,10 @@ type Transport struct {
 }
 
 type Transvase struct {
-	SrcSiloID string `json:"src_silo_id"`
-	DstSiloID string `json:"dst_silo_id"`
-	Date      string `json:"date"`
+	SrcSiloID   string `json:"src_silo_id"`
+	DstSiloID   string `json:"dst_silo_id"`
+	Temperature string `json:"temperature"`
+	Date        string `json:"date"`
 }
 
 type Trace struct {
